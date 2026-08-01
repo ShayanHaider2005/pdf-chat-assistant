@@ -1,11 +1,20 @@
-streamlit
-langchain-google-genai
-langchain-huggingface
-langchain-community
-langchain-text-splitters
-langchain-core
-faiss-cpu
-pypdf
-pdf2image
-pillow
-requests
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+streamlit = "*"
+langchain-google-genai = "*"
+langchain-huggingface = "*"
+langchain-community = "*"
+langchain-text-splitters = "*"
+langchain-core = "*"
+faiss-cpu = "*"
+pypdf = "*"
+pdf2image = "*"
+pillow = "*"
+requests = "*"
+
+[requires]
+python_version = "3.11"
