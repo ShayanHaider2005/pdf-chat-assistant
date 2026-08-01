@@ -1,11 +1,36 @@
 import os
 import io
+import sys
 import tempfile
 import urllib.parse
+import subprocess
 import requests
+
+# Force install dependencies into a temporary local directory if missing
+user_dir = tempfile.mkdtemp()
+sys.path.insert(0, user_dir)
+
+def ensure_package(pkg_name, import_name=None):
+    if import_name is None:
+        import_name = pkg_name
+    try:
+        __import__(import_name)
+    except ImportError:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--target", user_dir, pkg_name],
+            check=True
+        )
+
+# Ensure critical packages are available
+ensure_package("langchain-community", "langchain_community")
+ensure_package("langchain-google-genai", "langchain_google_genai")
+ensure_package("langchain-huggingface", "langchain_huggingface")
+ensure_package("langchain-text-splitters", "langchain_text_splitters")
+ensure_package("faiss-cpu", "faiss")
+ensure_package("pypdf")
+
 import streamlit as st
 from PIL import Image
-
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
