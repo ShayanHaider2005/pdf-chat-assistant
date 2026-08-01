@@ -1,5 +1,5 @@
 # PDF Chat Assistant
-
+LIVE LINK : https://pdf-chat-assistant-mmv8r5uf7dpxi5skgbyffu.streamlit.app/
 A multimodal RAG (Retrieval-Augmented Generation) application built with Streamlit, LangChain, and Gemini 3.6 Flash. This tool enables users to upload PDF documents, ask complex questions, review auto-generated summaries, and dynamically generate contextual visual diagrams.
 
 Created by Shayan Haider on 1st august 2026.
