@@ -5,7 +5,19 @@ import urllib.parse
 import requests
 import streamlit as st
 from PIL import Image
-from pdf2image import convert_from_path
+import pypdf
+from PIL import Image
+import io
+
+def convert_from_path(pdf_path):
+    """Fallback replacement for pdf2image using pypdf"""
+    reader = pypdf.PdfReader(pdf_path)
+    images = []
+    for page in reader.pages:
+        for image_file_object in page.images:
+            image = Image.open(io.BytesIO(image_file_object.data))
+            images.append(image)
+    return images
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
