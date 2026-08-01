@@ -1,37 +1,15 @@
 import os
 import io
-import sys
 import tempfile
 import urllib.parse
-import subprocess
 import requests
 import streamlit as st
 from PIL import Image
 
-try:
-    import pypdf
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "pypdf"])
-    import pypdf
-
-def convert_from_path(pdf_path, first_page=1, last_page=None):
-    reader = pypdf.PdfReader(pdf_path)
-    images = []
-    
-    start_idx = max(0, first_page - 1)
-    end_idx = len(reader.pages) if last_page is None else min(len(reader.pages), last_page)
-    
-    for page_num in range(start_idx, end_idx):
-        page = reader.pages[page_num]
-        for image_file_object in page.images:
-            image = Image.open(io.BytesIO(image_file_object.data))
-            images.append(image)
-    return images
-
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
@@ -48,7 +26,7 @@ if not api_key:
 @st.cache_resource
 def load_llm(key):
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", google_api_key=key, temperature=0.3
+        model="gemini-1.5-flash", google_api_key=key, temperature=0.3
     )
 
 
@@ -75,15 +53,13 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "pdf_processed" not in st.session_state:
     st.session_state.pdf_processed = False
-if "pdf_images" not in st.session_state:
-    st.session_state.pdf_images = []
 
 with st.sidebar:
     st.header("1. Upload Document")
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
     if uploaded_file is not None:
         if st.button("Process PDF", type="primary"):
-            with st.spinner("Processing text and rendering images..."):
+            with st.spinner("Processing document text..."):
                 try:
                     with tempfile.NamedTemporaryFile(
                         delete=False, suffix=".pdf"
@@ -93,9 +69,6 @@ with st.sidebar:
                         
                     loader = PyPDFLoader(tmp_filepath)
                     documents = loader.load()
-                    st.session_state.pdf_images = convert_from_path(
-                        tmp_filepath, first_page=1, last_page=5
-                    )
                     
                     if os.path.exists(tmp_filepath):
                         os.remove(tmp_filepath)
@@ -128,32 +101,15 @@ with st.sidebar:
                         )
                         summary_prompt = f"Provide a clear, structured summary and key takeaways from this text:\n{summary_context}"
                         raw_summary = llm.invoke(summary_prompt)
-                    else:
-                        raw_summary = llm.invoke(
-                            [
-                                HumanMessage(
-                                    content=[
-                                        {
-                                            "type": "text",
-                                            "text": "Summarize the key information visible across these PDF page images:",
-                                        },
-                                        *[
-                                            {"type": "image_url", "image_url": img}
-                                            for img in st.session_state.pdf_images
-                                        ],
-                                    ]
-                                )
-                            ]
+                        summary_text = (
+                            raw_summary.content
+                            if hasattr(raw_summary, "content")
+                            else str(raw_summary)
                         )
-                    summary_text = (
-                        raw_summary.content
-                        if hasattr(raw_summary, "content")
-                        else str(raw_summary)
-                    )
-                    st.session_state.messages.append(
-                        {"role": "assistant", "type": "text", "content": summary_text}
-                    )
-                    st.rerun()
+                        st.session_state.messages.append(
+                            {"role": "assistant", "type": "text", "content": summary_text}
+                        )
+                        st.rerun()
                 except Exception as e:
                     st.error(f"Error generating summary: {e}")
     else:
@@ -239,47 +195,28 @@ if user_question := st.chat_input("Ask a question or request an image..."):
                                     "input": user_question,
                                 }
                             )
-                        else:
-                            raw_response = llm.invoke(
-                                [
-                                    HumanMessage(
-                                        content=[
-                                            {
-                                                "type": "text",
-                                                "text": f"Question: {user_question}\nAnswer using the provided page images:",
-                                            },
-                                            *[
-                                                {"type": "image_url", "image_url": img}
-                                                for img in st.session_state.pdf_images[
-                                                    :3
-                                                ]
-                                            ],
-                                        ]
-                                    )
-                                ]
+                            raw_content = (
+                                raw_response.content
+                                if hasattr(raw_response, "content")
+                                else str(raw_response)
                             )
-                        raw_content = (
-                            raw_response.content
-                            if hasattr(raw_response, "content")
-                            else str(raw_response)
-                        )
-                        if isinstance(raw_content, list):
-                            clean_parts = [
-                                item.get("text", "")
-                                if isinstance(item, dict)
-                                else str(item)
-                                for item in raw_content
-                            ]
-                            answer_text = "\n".join(clean_parts)
-                        else:
-                            answer_text = str(raw_content)
-                        st.markdown(answer_text)
-                        st.session_state.messages.append(
-                            {
-                                "role": "assistant",
-                                "type": "text",
-                                "content": answer_text,
-                            }
-                        )
+                            if isinstance(raw_content, list):
+                                clean_parts = [
+                                    item.get("text", "")
+                                    if isinstance(item, dict)
+                                    else str(item)
+                                    for item in raw_content
+                                ]
+                                answer_text = "\n".join(clean_parts)
+                            else:
+                                answer_text = str(raw_content)
+                            st.markdown(answer_text)
+                            st.session_state.messages.append(
+                                {
+                                    "role": "assistant",
+                                    "type": "text",
+                                    "content": answer_text,
+                                }
+                            )
                     except Exception as e:
                         st.error(f"Error generating answer: {e}")
