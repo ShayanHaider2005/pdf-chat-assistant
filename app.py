@@ -5,8 +5,6 @@ import tempfile
 import urllib.parse
 import subprocess
 import requests
-
-# Install missing dependencies safely into temp directory
 user_dir = tempfile.mkdtemp()
 sys.path.insert(0, user_dir)
 
@@ -49,7 +47,7 @@ if not api_key:
 @st.cache_resource
 def load_llm(key):
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", google_api_key=key, temperature=0.3
+        model="gemini-3.6-flash", google_api_key=key, temperature=0.3
     )
 
 
