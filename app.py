@@ -1,23 +1,33 @@
 import os
 import io
+import sys
 import tempfile
 import urllib.parse
+import subprocess
 import requests
 import streamlit as st
 from PIL import Image
-import pypdf
-from PIL import Image
-import io
 
-def convert_from_path(pdf_path):
-    """Fallback replacement for pdf2image using pypdf"""
+try:
+    import pypdf
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pypdf"])
+    import pypdf
+
+def convert_from_path(pdf_path, first_page=1, last_page=None):
     reader = pypdf.PdfReader(pdf_path)
     images = []
-    for page in reader.pages:
+    
+    start_idx = max(0, first_page - 1)
+    end_idx = len(reader.pages) if last_page is None else min(len(reader.pages), last_page)
+    
+    for page_num in range(start_idx, end_idx):
+        page = reader.pages[page_num]
         for image_file_object in page.images:
             image = Image.open(io.BytesIO(image_file_object.data))
             images.append(image)
     return images
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -29,16 +39,16 @@ from langchain_core.messages import HumanMessage
 st.set_page_config(page_title="PDF Chat Assistant", layout="wide")
 st.title("Chat with Your PDF")
 
-api_key = os.getenv("GOOGLE_API_KEY")
+api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 if not api_key:
-    st.error("GOOGLE_API_KEY secret is missing! Please set it in Replit Secrets.")
+    st.error("GOOGLE_API_KEY secret is missing! Please set it in Streamlit / Replit Secrets.")
     st.stop()
 
 
 @st.cache_resource
 def load_llm(key):
     return ChatGoogleGenerativeAI(
-        model="gemini-3.6-flash", google_api_key=key, temperature=0.3
+        model="gemini-2.5-flash", google_api_key=key, temperature=0.3
     )
 
 
@@ -73,20 +83,23 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
     if uploaded_file is not None:
         if st.button("Process PDF", type="primary"):
-            with st.spinner("Processing text and rendering images for Gemini 3.6..."):
+            with st.spinner("Processing text and rendering images..."):
                 try:
                     with tempfile.NamedTemporaryFile(
                         delete=False, suffix=".pdf"
                     ) as tmp_file:
                         tmp_file.write(uploaded_file.getvalue())
                         tmp_filepath = tmp_file.name
+                        
                     loader = PyPDFLoader(tmp_filepath)
                     documents = loader.load()
                     st.session_state.pdf_images = convert_from_path(
                         tmp_filepath, first_page=1, last_page=5
                     )
+                    
                     if os.path.exists(tmp_filepath):
                         os.remove(tmp_filepath)
+                        
                     if documents:
                         text_splitter = RecursiveCharacterTextSplitter(
                             chunk_size=1000, chunk_overlap=200, length_function=len
@@ -146,7 +159,7 @@ with st.sidebar:
     else:
         st.warning("Status: Please upload and process a PDF.")
     st.divider()
-    st.caption("Created by Shayan Haider on 1st august 2026")
+    st.caption("Created by Shayan Haider")
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -187,7 +200,7 @@ if user_question := st.chat_input("Ask a question or request an image..."):
                     else:
                         st.error("Failed to generate image. Please try again.")
             else:
-                with st.spinner("Searching document & analyzing with Gemini 3.6..."):
+                with st.spinner("Searching document & analyzing with Gemini..."):
                     try:
                         chat_history_str = ""
                         recent_messages = st.session_state.messages[:-1][-6:]
