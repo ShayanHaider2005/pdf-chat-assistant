@@ -24,13 +24,15 @@ def ensure_package(pkg_name, import_name=None):
 ensure_package("langchain-community", "langchain_community")
 ensure_package("langchain-google-genai", "langchain_google_genai")
 ensure_package("langchain-text-splitters", "langchain_text_splitters")
+ensure_package("fastembed")
 ensure_package("faiss-cpu", "faiss")
 ensure_package("pypdf")
 
 import streamlit as st
 from PIL import Image
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
@@ -52,10 +54,8 @@ def load_llm(key):
 
 
 @st.cache_resource
-def load_embeddings(key):
-    return GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", google_api_key=key
-    )
+def load_embeddings():
+    return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 
 def generate_image_bytes(prompt):
@@ -68,7 +68,7 @@ def generate_image_bytes(prompt):
 
 
 llm = load_llm(api_key)
-embeddings = load_embeddings(api_key)
+embeddings = load_embeddings()
 
 if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = None
