@@ -1,15 +1,16 @@
-# [Project name]
+# Daymark
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Daymark is a local-first Streamlit task tracker for organizing open work, due dates, priorities, and completed tasks.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `streamlit run main.py --server.port 5000` — run the Python task tracker
+- `pnpm --filter @workspace/api-server run dev` — run the API server
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Python dependencies are managed with `pyproject.toml` and `uv.lock`.
 
 ## Stack
 
@@ -22,15 +23,19 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `main.py` — Streamlit UI, task operations, filtering, and local persistence
+- `tasks.json` — created on first use; stores the user's task list
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Tasks are stored in a small readable JSON file so the starter app works without a database.
+- Streamlit's built-in components are used to keep the Python app easy to extend and run.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Add tasks with notes, priority, category, and due date.
+- Complete, search, filter, and delete tasks.
+- See open, completed, overdue, and completion-rate summaries.
 
 ## User preferences
 
