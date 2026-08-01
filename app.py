@@ -6,7 +6,7 @@ import urllib.parse
 import subprocess
 import requests
 
-# Force install dependencies into a temporary local directory if missing
+# Install missing dependencies safely into temp directory
 user_dir = tempfile.mkdtemp()
 sys.path.insert(0, user_dir)
 
@@ -21,10 +21,8 @@ def ensure_package(pkg_name, import_name=None):
             check=True
         )
 
-# Ensure critical packages are available
 ensure_package("langchain-community", "langchain_community")
 ensure_package("langchain-google-genai", "langchain_google_genai")
-ensure_package("langchain-huggingface", "langchain_huggingface")
 ensure_package("langchain-text-splitters", "langchain_text_splitters")
 ensure_package("faiss-cpu", "faiss")
 ensure_package("pypdf")
@@ -32,12 +30,10 @@ ensure_package("pypdf")
 import streamlit as st
 from PIL import Image
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage
 
 st.set_page_config(page_title="PDF Chat Assistant", layout="wide")
 st.title("Chat with Your PDF")
@@ -56,8 +52,10 @@ def load_llm(key):
 
 
 @st.cache_resource
-def load_embeddings():
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+def load_embeddings(key):
+    return GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001", google_api_key=key
+    )
 
 
 def generate_image_bytes(prompt):
@@ -70,7 +68,7 @@ def generate_image_bytes(prompt):
 
 
 llm = load_llm(api_key)
-embeddings = load_embeddings()
+embeddings = load_embeddings(api_key)
 
 if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = None
